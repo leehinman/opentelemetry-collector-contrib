@@ -78,7 +78,12 @@ func (m *encodeModel) encodeLog(resource pcommon.Resource, record plog.LogRecord
 	case MappingECS:
 		document = m.encodeLogECSMode(resource, record, scope)
 	default:
-		document = objmodel.DocumentFromAttributes(record.Body().Map())
+		br, prs := record.Attributes().Get("BeatReceiver")
+		if prs && br.Bool() {
+			document = objmodel.DocumentFromAttributes(record.Body().Map())
+		} else {
+			document = m.encodeLogDefaultMode(resource, record, scope)
+		}
 	}
 
 	var buf bytes.Buffer
