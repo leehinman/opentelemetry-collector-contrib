@@ -78,7 +78,7 @@ func (m *encodeModel) encodeLog(resource pcommon.Resource, record plog.LogRecord
 	case MappingECS:
 		document = m.encodeLogECSMode(resource, record, scope)
 	default:
-		document = m.encodeLogDefaultMode(resource, record, scope)
+		document = objmodel.DocumentFromAttributes(record.Body().Map())
 	}
 
 	var buf bytes.Buffer
