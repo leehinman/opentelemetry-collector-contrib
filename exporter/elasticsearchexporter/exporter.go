@@ -179,6 +179,7 @@ func (e *elasticsearchExporter) pushLogRecord(
 
 	buf := e.bufferPool.NewPooledBuffer()
 	docID := e.extractDocumentIDAttribute(record.Attributes())
+	pipeline := e.extractDocumentPipelineAttribute(record.Attributes())
 	err := e.model.encodeLog(resource, resourceSchemaURL, record, scope, scopeSchemaURL, fIndex, buf.Buffer)
 	if err != nil {
 		buf.Recycle()
@@ -186,7 +187,7 @@ func (e *elasticsearchExporter) pushLogRecord(
 	}
 
 	// not recycling after Add returns an error as we don't know if it's already recycled
-	return bulkIndexerSession.Add(ctx, fIndex.Index, docID, buf, nil)
+	return bulkIndexerSession.Add(ctx, fIndex.Index, docID, pipeline, buf, nil)
 }
 
 type dataPointsGroup struct {
@@ -322,7 +323,7 @@ func (e *elasticsearchExporter) pushMetricsData(
 				errs = append(errs, err)
 				continue
 			}
-			if err := session.Add(ctx, fIndex.Index, "", buf, dynamicTemplates); err != nil {
+			if err := session.Add(ctx, fIndex.Index, "", "", buf, dynamicTemplates); err != nil {
 				// not recycling after Add returns an error as we don't know if it's already recycled
 				if cerr := ctx.Err(); cerr != nil {
 					return cerr
@@ -443,7 +444,7 @@ func (e *elasticsearchExporter) pushTraceRecord(
 		return fmt.Errorf("failed to encode trace record: %w", err)
 	}
 	// not recycling after Add returns an error as we don't know if it's already recycled
-	return bulkIndexerSession.Add(ctx, fIndex.Index, "", buf, nil)
+	return bulkIndexerSession.Add(ctx, fIndex.Index, "", "", buf, nil)
 }
 
 func (e *elasticsearchExporter) pushSpanEvent(
@@ -475,7 +476,7 @@ func (e *elasticsearchExporter) pushSpanEvent(
 		return nil
 	}
 	// not recycling after Add returns an error as we don't know if it's already recycled
-	return bulkIndexerSession.Add(ctx, fIndex.Index, "", buf, nil)
+	return bulkIndexerSession.Add(ctx, fIndex.Index, "", "", buf, nil)
 }
 
 func (e *elasticsearchExporter) extractDocumentIDAttribute(m pcommon.Map) string {
@@ -484,6 +485,19 @@ func (e *elasticsearchExporter) extractDocumentIDAttribute(m pcommon.Map) string
 	}
 
 	v, ok := m.Get(elasticsearch.DocumentIDAttributeName)
+	if !ok {
+		return ""
+	}
+	return v.AsString()
+}
+
+func (e *elasticsearchExporter) extractDocumentPipelineAttribute(m pcommon.Map) string {
+	// if Pipeline is configured for the whole exporter, use that.
+	if !e.config.LogsDynamicPipeline.Enabled {
+		return ""
+	}
+
+	v, ok := m.Get(elasticsearch.DocumentPipelineAttributeName)
 	if !ok {
 		return ""
 	}
