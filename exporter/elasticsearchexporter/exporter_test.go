@@ -2149,7 +2149,7 @@ func actionJSONToPipeline(t *testing.T, actionJSON json.RawMessage) string {
 // of the inner keys.  The value of the inner key must be a string.
 func actionGetValue(t *testing.T, actionJSON json.RawMessage, target string) string {
 	t.Helper()
-	var a = map[string]interface{}{}
+	var a = map[string]any{}
 
 	err := json.Unmarshal(actionJSON, &a)
 	require.NoErrorf(t, err, "error unmarshalling action: %s", err)
@@ -2157,7 +2157,7 @@ func actionGetValue(t *testing.T, actionJSON json.RawMessage, target string) str
 	create, prs := a["create"]
 	require.Truef(t, prs, "create was not present in action")
 
-	createMap, ok := create.(map[string]interface{})
+	createMap, ok := create.(map[string]any)
 	require.True(t, ok, "create was not a map[string]interface{}")
 
 	v, prs := createMap[target]
