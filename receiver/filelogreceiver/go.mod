@@ -1,4 +1,4 @@
-module github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver
+module github.com/leehinman/opentelemetry-collector-contrib/receiver/filelogreceiver
 
 go 1.25.0
 

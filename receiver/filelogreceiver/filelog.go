@@ -4,7 +4,10 @@
 package filelogreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 
 import (
+	"context"
+
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/xreceiver"
 
@@ -17,7 +20,18 @@ import (
 
 // NewFactory creates a factory for file_log receiver
 func NewFactory() receiver.Factory {
-	return adapter.NewFactory(ReceiverType{}, metadata.LogsStability,
+	adapterFactory := adapter.NewFactory(ReceiverType{}, metadata.LogsStability,
+		xreceiver.WithDeprecatedTypeAlias(metadata.DeprecatedType),
+	)
+	return xreceiver.NewFactory(
+		metadata.Type,
+		ReceiverType{}.CreateDefaultConfig,
+		xreceiver.WithLogs(func(ctx context.Context, params receiver.Settings, cfg component.Config, nextConsumer consumer.Logs) (receiver.Logs, error) {
+			if cfg.(*FileLogConfig).BodyMapEncoding {
+				nextConsumer = newBodyMapConsumer(nextConsumer)
+			}
+			return adapterFactory.CreateLogs(ctx, params, cfg, nextConsumer)
+		}, metadata.LogsStability),
 		xreceiver.WithDeprecatedTypeAlias(metadata.DeprecatedType),
 	)
 }
@@ -55,6 +69,7 @@ func (ReceiverType) BaseConfig(cfg component.Config) adapter.BaseConfig {
 type FileLogConfig struct {
 	InputConfig        file.Config `mapstructure:",squash"`
 	adapter.BaseConfig `mapstructure:",squash"`
+	BodyMapEncoding    bool        `mapstructure:"body_map_encoding"`
 
 	// prevent unkeyed literal initialization
 	_ struct{}
